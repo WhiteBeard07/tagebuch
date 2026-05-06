@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<title>Ausgaben-Tagebuch</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #f0f2f5;
+  --card: #ffffff;
+  --text: #1a1a2e;
+  --text-muted: #6b7280;
+  --text-light: #9ca3af;
+  --border: #e5e7eb;
+  --border-light: #f0f0f0;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: rgba(37,99,235,0.08);
+  --green: #10b981;
+  --green-dark: #059669;
+  --red: #ef4444;
+  --red-dark: #dc2626;
+  --yellow: #f59e0b;
+  --purple: #8b5cf6;
+  --cyan: #06b6d4;
+  --font: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', 'Consolas', monospace;
+  --bottom-nav-h: 64px;
+  --header-h: 56px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px;
+  display: flex; flex-direction: column; overscroll-behavior: none;
+}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+@keyframes slideUp { from { transform:translateY(20px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+@keyframes pop { 0% { transform:scale(1); } 50% { transform:scale(1.04); } 100% { transform:scale(1); } }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+/* Header */
+.app-header {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #fff; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0; height: var(--header-h);
+}
+.app-title { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+.app-subtitle { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 1px; font-family: var(--mono); }
+
+/* Main scrollable area */
+.app-main {
+  flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  padding-bottom: var(--bottom-nav-h);
+}
+.tab-page { display: none; animation: fadeIn 0.15s ease; }
+.tab-page.active { display: block; }
+
+/* Bottom Navigation */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-h);
+  background: var(--card); border-top: 1px solid var(--border);
+  display: flex; z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.nav-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; cursor: pointer; color: var(--text-light); transition: color 0.15s;
+  border: none; background: none; font-family: var(--font); padding: 6px;
+}
+.nav-tab.active { color: var(--primary); }
+.nav-tab svg { width: 22px; height: 22px; }
+.nav-tab span { font-size: 10px; font-weight: 600; }
+
+/* ════════════════════════════════════
+   TAB 1: TAGEBUCH (Quick-Add)
+   ════════════════════════════════════ */
+
+.input-section {
+  background: var(--card); padding: 16px; margin-bottom: 8px;
+}
+
+.amount-input-wrap {
+  position: relative; margin-bottom: 14px;
+}
+.amount-input {
+  width: 100%; padding: 18px 20px; text-align: center;
+  font-family: var(--mono); font-size: 36px; font-weight: 700;
+  border: 2px solid var(--border); border-radius: 14px; outline: none;
+  background: var(--bg); color: var(--text); transition: all 0.2s;
+  letter-spacing: -0.02em;
+}
+.amount-input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px var(--primary-light); }
+.amount-input::placeholder { color: var(--text-light); }
+
+.payment-toggle {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-bottom: 14px;
+}
+.payment-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 12px; border-radius: 99px; border: 1px solid var(--border);
+  background: var(--bg); font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: var(--font); color: var(--text-muted); transition: all 0.15s;
+}
+.payment-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.payment-chip:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+.payment-chip svg { width: 13px; height: 13px; }
+
+.cat-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.cat-tile {
+  aspect-ratio: 1.15;
+  background: var(--bg); border: 2px solid transparent; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; cursor: pointer; transition: all 0.12s;
+  font-family: var(--font); padding: 8px;
+}
+.cat-tile:active { transform: scale(0.96); }
+.cat-tile:hover { border-color: var(--primary); background: var(--primary-light); }
+.cat-tile.tile-saved { animation: pop 0.4s ease; border-color: var(--green); background: #ecfdf5; }
+.cat-emoji { font-size: 28px; line-height: 1; }
+.cat-label { font-size: 12px; font-weight: 600; color: var(--text); }
+
+/* List */
+.list-section { padding: 0 12px 12px; }
+.day-group { margin-top: 14px; }
+.day-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 6px 6px 8px; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted);
+}
+.day-header .day-sum { font-family: var(--mono); color: var(--text); font-size: 13px; }
+
+.entry-list { background: var(--card); border-radius: 12px; overflow: hidden; }
+.entry-item {
+  display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+  border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background 0.1s;
+}
+.entry-item:last-child { border-bottom: none; }
+.entry-item:active { background: var(--bg); }
+.entry-emoji { font-size: 22px; flex-shrink: 0; width: 30px; text-align: center; }
+.entry-main { flex: 1; min-width: 0; }
+.entry-cat { font-size: 13px; font-weight: 600; color: var(--text); }
+.entry-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; display: flex; gap: 6px; align-items: center; }
+.entry-meta-item { display: inline-flex; align-items: center; gap: 3px; }
+.entry-amount { font-family: var(--mono); font-weight: 700; font-size: 14px; flex-shrink: 0; }
+
+.empty-state { text-align: center; padding: 50px 20px 30px; color: var(--text-muted); }
+.empty-state .empty-icon { font-size: 42px; margin-bottom: 10px; opacity: 0.5; }
+.empty-state h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.empty-state p { font-size: 12px; }
+
+/* ════════════════════════════════════
+   MORE-CATEGORIES SHEET (für ➕ Mehr)
+   ════════════════════════════════════ */
+
+.sheet-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 200; display: none; animation: fadeIn 0.2s ease;
+}
+.sheet-overlay.open { display: block; }
+
+.sheet {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--card); border-radius: 18px 18px 0 0;
+  z-index: 201; max-height: 85vh; display: flex; flex-direction: column;
+  transform: translateY(100%); transition: transform 0.25s ease;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.sheet.open { transform: translateY(0); }
+.sheet-handle {
+  width: 36px; height: 4px; background: var(--border); border-radius: 2px;
+  margin: 8px auto 0; flex-shrink: 0;
+}
+.sheet-header {
+  padding: 12px 16px 8px; display: flex; justify-content: space-between; align-items: center;
+  flex-shrink: 0;
+}
+.sheet-title { font-size: 16px; font-weight: 700; }
+.sheet-close {
+  background: none; border: none; cursor: pointer; padding: 6px; color: var(--text-muted);
+  font-size: 22px; line-height: 1;
+}
+.sheet-body { padding: 0 16px 16px; overflow-y: auto; flex: 1; }
+
+.cat-list-group { margin-bottom: 14px; }
+.cat-list-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); padding: 8px 4px 4px;
+}
+.cat-list-row {
+  display: flex; align-items: center; gap: 10px; padding: 11px 12px;
+  background: var(--bg); border-radius: 10px; cursor: pointer;
+  margin-bottom: 4px; transition: background 0.1s;
+}
+.cat-list-row:active { background: var(--primary-light); }
+.cat-list-row .cat-list-emoji { font-size: 18px; }
+.cat-list-row .cat-list-name { font-size: 13px; font-weight: 600; flex: 1; }
+.cat-list-row .cat-list-arrow { color: var(--text-light); }
+
+/* ════════════════════════════════════
+   DETAIL EDIT SHEET
+   ════════════════════════════════════ */
+
+.field-group { margin-bottom: 14px; }
+.field-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); margin-bottom: 6px; display: block;
+}
+.field-input, .field-select, .field-textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+  font-family: var(--font); font-size: 14px; outline: none; background: var(--card);
+  color: var(--text);
+}
+.field-input:focus, .field-select:focus, .field-textarea:focus {
+  border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light);
+}
+.field-textarea { min-height: 60px; resize: vertical; }
+.field-input-mono { font-family: var(--mono); font-weight: 600; }
+
+.field-row { display: flex; gap: 10px; }
+.field-row > .field-group { flex: 1; }
+
+.chip-row {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.chip {
+  padding: 7px 12px; border-radius: 99px; border: 1px solid var(--border);
+  background: var(--bg); font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: var(--font); color: var(--text-muted); transition: all 0.12s;
+}
+.chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.chip:active { transform: scale(0.95); }
+
+.split-section {
+  background: var(--bg); border-radius: 10px; padding: 12px; margin-top: 4px;
+}
+
+.sheet-actions {
+  display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border-light);
+  margin-top: 8px;
+}
+.btn {
+  flex: 1; padding: 12px 16px; border-radius: 10px; border: none; cursor: pointer;
+  font-family: var(--font); font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+.btn-danger { background: #fee2e2; color: var(--red-dark); }
+.btn-ghost { background: transparent; color: var(--text-muted); }
+
+/* ════════════════════════════════════
+   TAB 2: ÜBERSICHT
+   ════════════════════════════════════ */
+
+.range-bar {
+  display: flex; gap: 6px; padding: 10px 12px; background: var(--card);
+  overflow-x: auto; border-bottom: 1px solid var(--border-light);
+  scrollbar-width: none;
+}
+.range-bar::-webkit-scrollbar { display: none; }
+.range-chip {
+  flex-shrink: 0; padding: 7px 14px; border-radius: 99px; border: 1px solid var(--border);
+  background: var(--bg); font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: var(--font); color: var(--text-muted); transition: all 0.12s;
+}
+.range-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.stat-card {
+  background: var(--card); border-radius: 12px; padding: 14px 16px;
+  margin: 10px 12px;
+}
+.stat-grid-3 {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  padding: 0 12px; margin: 10px 0;
+}
+.stat-mini {
+  background: var(--card); border-radius: 12px; padding: 12px 10px; text-align: center;
+}
+.stat-mini-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-mini-value { font-family: var(--mono); font-size: 18px; font-weight: 700; margin-top: 3px; }
+.stat-mini-value.green { color: var(--green-dark); }
+.stat-mini-value.red { color: var(--red-dark); }
+
+.chart-card {
+  background: var(--card); border-radius: 12px; padding: 14px 16px;
+  margin: 10px 12px;
+}
+.chart-card-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.chart-wrap { position: relative; height: 220px; }
+.chart-wrap-tall { position: relative; height: 280px; }
+
+.heatmap-wrap { display: grid; grid-template-columns: 32px repeat(7, 1fr); gap: 3px; margin-top: 8px; }
+.heatmap-label { font-size: 10px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; }
+.heatmap-cell {
+  aspect-ratio: 1; border-radius: 4px; background: #f3f4f6;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; color: var(--text-muted); font-family: var(--mono);
+}
+.heatmap-day-label { font-size: 10px; color: var(--text-muted); text-align: center; padding-bottom: 2px; }
+
+/* ════════════════════════════════════
+   TAB 3: SETUP
+   ════════════════════════════════════ */
+
+.setup-section {
+  background: var(--card); border-radius: 12px; margin: 10px 12px; overflow: hidden;
+}
+.setup-row {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.setup-row:last-child { border-bottom: none; }
+.setup-row-label { flex: 1; font-size: 13px; font-weight: 500; }
+.setup-row-value { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+.setup-row-clickable { cursor: pointer; transition: background 0.1s; }
+.setup-row-clickable:active { background: var(--bg); }
+
+.setup-section-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--text-muted); padding: 16px 18px 6px;
+}
+
+/* Notification Toast */
+.toast {
+  position: fixed; bottom: calc(var(--bottom-nav-h) + 16px); left: 50%; transform: translateX(-50%);
+  padding: 10px 18px; border-radius: 99px; color: #fff; font-weight: 600; font-size: 13px;
+  z-index: 500; animation: slideUp 0.25s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.toast.success { background: var(--green); }
+.toast.error { background: var(--red); }
+.toast.info { background: var(--text); }
+
+/* Desktop adjustments */
+@media (min-width: 720px) {
+  body { background: #e5e7eb; }
+  .app-header, .app-main, .bottom-nav {
+    max-width: 480px; margin-left: auto; margin-right: auto;
+  }
+  .app-main { background: var(--bg); }
+  .bottom-nav { left: 50%; transform: translateX(-50%); right: auto; width: 100%; max-width: 480px; }
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div>
+    <div class="app-title">📓 Tagebuch</div>
+    <div class="app-subtitle" id="headerSubtitle">Heute · 0,00€ · 0 Einträge</div>
+  </div>
+  <div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--mono);">v1.0</div>
+</header>
+
+<main class="app-main">
+
+  <!-- ═══ TAB: TAGEBUCH ═══ -->
+  <div id="tab-tagebuch" class="tab-page active">
+
+    <div class="input-section">
+      <div class="amount-input-wrap">
+        <input class="amount-input" id="amountInput" type="text" inputmode="decimal" placeholder="0,00 €" autocomplete="off">
+      </div>
+
+      <div class="payment-toggle" id="paymentToggle">
+        <button class="payment-chip active" data-pay="Karte">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Karte
+        </button>
+        <button class="payment-chip" data-pay="Bar">💵 Bar</button>
+        <button class="payment-chip" data-pay="Vorgestreckt-von-mir" title="Ich strecke vor">⬆️ Vorgestreckt</button>
+        <button class="payment-chip" data-pay="Vorgestreckt-für-mich" title="Jemand zahlt für mich">⬇️ Bekommen</button>
+      </div>
+
+      <div class="cat-grid" id="catGrid"></div>
+    </div>
+
+    <div class="list-section" id="entryListSection"></div>
+  </div>
+
+  <!-- ═══ TAB: ÜBERSICHT ═══ -->
+  <div id="tab-uebersicht" class="tab-page">
+    <div class="range-bar" id="rangeBar">
+      <button class="range-chip" data-range="heute">Heute</button>
+      <button class="range-chip active" data-range="woche">Woche</button>
+      <button class="range-chip" data-range="monat">Monat</button>
+      <button class="range-chip" data-range="30tage">30 Tage</button>
+      <button class="range-chip" data-range="alle">Alle</button>
+    </div>
+
+    <div id="uebersichtContent"></div>
+  </div>
+
+  <!-- ═══ TAB: SETUP ═══ -->
+  <div id="tab-setup" class="tab-page">
+    <div class="setup-section-title">Daten</div>
+    <div class="setup-section" id="setupDataSection"></div>
+
+    <div class="setup-section-title">Einstellungen</div>
+    <div class="setup-section" id="setupSettingsSection"></div>
+
+    <div class="setup-section-title">Gefahrenzone</div>
+    <div class="setup-section">
+      <div class="setup-row setup-row-clickable" onclick="confirmDeleteAll()" style="color:var(--red-dark);">
+        <span class="setup-row-label">Alle Einträge löschen</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;color:var(--text-light);font-size:11px;padding:24px 12px 16px;">
+      Ausgaben-Tagebuch v1.0<br>
+      Schwester-Tool zum Haushaltsbuch<br>
+      Lokal · Privatsphäre · Kein Backend
+    </div>
+  </div>
+
+</main>
+
+<!-- Bottom Navigation -->
+<nav class="bottom-nav">
+  <button class="nav-tab active" data-tab="tagebuch" onclick="switchTab('tagebuch')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+    <span>Tagebuch</span>
+  </button>
+  <button class="nav-tab" data-tab="uebersicht" onclick="switchTab('uebersicht')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Übersicht</span>
+  </button>
+  <button class="nav-tab" data-tab="setup" onclick="switchTab('setup')">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span>Setup</span>
+  </button>
+</nav>
+
+<!-- More Categories Sheet -->
+<div class="sheet-overlay" id="moreSheetOverlay" onclick="closeMoreSheet()"></div>
+<div class="sheet" id="moreSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">Kategorie wählen</div>
+    <button class="sheet-close" onclick="closeMoreSheet()">&times;</button>
+  </div>
+  <div class="sheet-body" id="moreSheetBody"></div>
+</div>
+
+<!-- Detail Edit Sheet -->
+<div class="sheet-overlay" id="editSheetOverlay" onclick="closeEditSheet()"></div>
+<div class="sheet" id="editSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-header">
+    <div class="sheet-title">Eintrag bearbeiten</div>
+    <button class="sheet-close" onclick="closeEditSheet()">&times;</button>
+  </div>
+  <div class="sheet-body" id="editSheetBody"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIG & CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+
+const STORAGE_KEY = "tagebuch_data";
+const APP_VERSION = "1.0";
+
+// Quick-Add Kategorien (6 Tiles im Hauptscreen)
+const QUICK_KATEGORIEN = [
+  { name: "Tabak",    emoji: "🚬", subs: ["Zigaretten", "Tabak/Drehsachen", "Sonstiges"] },
+  { name: "Essen aus", emoji: "🍔", subs: ["Restaurant", "Lieferdienst", "Imbiss/Schnell", "Café"] },
+  { name: "Bier/Bar",  emoji: "🍺", subs: ["Bar/Kneipe", "Club", "Späti-Bier", "Sonstiges"] },
+  { name: "Snack",    emoji: "🍫", subs: ["Süßes", "Salziges", "Getränk-to-go", "Sonstiges"] },
+  { name: "Bargeld",  emoji: "💵", subs: ["Sonstiges"] },
+  { name: "Mehr",     emoji: "➕", subs: [] }, // Special: opens more-sheet
+];
+
+// Erweiterte Kategorien (für ➕ Mehr → vollständige Liste analog Haushaltsbuch)
+const ERWEITERTE_KATEGORIEN = {
+  "Lebensmittel & Haushalt": { emoji: "🛒", subs: ["Supermarkt", "Bäcker", "Haushaltswaren", "Sonstiges"] },
+  "Transport & Mobilität":   { emoji: "🚌", subs: ["ÖPNV", "Fernverkehr", "Tanken/Auto", "Sonstiges"] },
+  "Gesundheit":              { emoji: "💊", subs: ["Apotheke", "Arzt", "Supplements", "Sport", "Sonstiges"] },
+  "Freizeit & Unterhaltung": { emoji: "🎉", subs: ["Ausgang", "Streaming/Abos", "Kino/Events", "Sonstiges"] },
+  "Bildung":                 { emoji: "📚", subs: ["Bücher", "Kurse", "Sonstiges"] },
+  "Geschenke":               { emoji: "🎁", subs: ["Sonstiges"] },
+  "Urlaub":                  { emoji: "✈️", subs: ["Unterkunft", "Flug/Anreise", "Aktivitäten", "Sonstiges"] },
+  "Einkäufe Online":         { emoji: "📦", subs: ["Amazon", "Back Market", "Sonstiges"] },
+  "Wohnen":                  { emoji: "🏠", subs: ["Miete", "Strom", "Mobilfunk", "Internet", "Versicherung", "Einrichtung", "Sonstiges"] },
+  "Sonstiges":               { emoji: "❓", subs: ["Sonstiges"] },
+};
+
+// Lookup Map: Kategorie-Name → Emoji (für Liste)
+const ALL_KAT_EMOJI = {};
+QUICK_KATEGORIEN.forEach(k => ALL_KAT_EMOJI[k.name] = k.emoji);
+Object.entries(ERWEITERTE_KATEGORIEN).forEach(([n,k]) => ALL_KAT_EMOJI[n] = k.emoji);
+
+const ZAHLUNGSARTEN = ["Karte", "Bar", "Vorgestreckt-von-mir", "Vorgestreckt-für-mich"];
+const ZAHLUNG_LABEL = {
+  "Karte": "💳 Karte",
+  "Bar": "💵 Bar",
+  "Vorgestreckt-von-mir": "⬆️ Vorgestreckt",
+  "Vorgestreckt-für-mich": "⬇️ Bekommen",
+};
+
+const BEDARF_OPTIONS = ["Bedarf", "Impuls", "Routine"];
+const BEDARF_EMOJI = { "Bedarf": "✅", "Impuls": "⚡", "Routine": "🔁" };
+
+const WOCHENTAGE = ["Mo","Di","Mi","Do","Fr","Sa","So"];
+const MONATE_LABEL = ["Jan","Feb","Mär","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"];
+const PIE_COLORS = ["#2563eb","#f59e0b","#10b981","#ef4444","#8b5cf6","#ec4899","#06b6d4","#84cc16","#f97316","#6366f1","#14b8a6"];
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+
+let state = {
+  einträge: [],
+  settings: {
+    standard_zahlungsart: "Karte",
+  },
+};
+let currentZahlungsart = "Karte";
+let currentEditId = null;
+let currentRange = "woche";
+let chartInstances = {};
+
+// ═══════════════════════════════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════════════════════════════
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.einträge) {
+      state.einträge = data.einträge.map(e => ({
+        ...e,
+        zeitstempel: new Date(e.zeitstempel),
+      }));
+    }
+    if (data.settings) {
+      state.settings = { ...state.settings, ...data.settings };
+    }
+    currentZahlungsart = state.settings.standard_zahlungsart || "Karte";
+  } catch (err) {
+    console.error("Load failed:", err);
+    toast("Daten konnten nicht geladen werden", "error");
+  }
+}
+
+function saveState() {
+  try {
+    const data = {
+      version: APP_VERSION,
+      einträge: state.einträge,
+      settings: state.settings,
+      last_modified: new Date().toISOString(),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (err) {
+    console.error("Save failed:", err);
+    toast("Speichern fehlgeschlagen", "error");
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function formatEuro(n) {
+  return new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(n);
+}
+
+function parseGermanNumber(str) {
+  if (typeof str === "number") return str;
+  if (!str) return 0;
+  return parseFloat(String(str).replace(/\./g, "").replace(",", "."));
+}
+
+function formatTimeShort(d) {
+  return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+}
+
+function formatDateShort(d) {
+  return String(d.getDate()).padStart(2,"0") + "." + String(d.getMonth()+1).padStart(2,"0") + "." + d.getFullYear();
+}
+
+function formatDateInput(d) {
+  // YYYY-MM-DD für <input type="date">
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function dayKey(d) {
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function isToday(d) {
+  const t = new Date();
+  return d.getDate()===t.getDate() && d.getMonth()===t.getMonth() && d.getFullYear()===t.getFullYear();
+}
+
+function isYesterday(d) {
+  const y = new Date(); y.setDate(y.getDate()-1);
+  return d.getDate()===y.getDate() && d.getMonth()===y.getMonth() && d.getFullYear()===y.getFullYear();
+}
+
+function dayLabel(d) {
+  if (isToday(d)) return "Heute";
+  if (isYesterday(d)) return "Gestern";
+  return ["So","Mo","Di","Mi","Do","Fr","Sa"][d.getDay()] + ", " + formatDateShort(d);
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s ?? "");
+  return d.innerHTML;
+}
+
+function toast(msg, type="success") {
+  const existing = document.querySelectorAll(".toast");
+  existing.forEach(el => el.remove());
+  const el = document.createElement("div");
+  el.className = "toast " + type;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = "0"; el.style.transition = "opacity 0.3s"; }, 1800);
+  setTimeout(() => el.remove(), 2200);
+}
+
+function getKatEmoji(katName) {
+  return ALL_KAT_EMOJI[katName] || "📌";
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+
+function switchTab(tab) {
+  document.querySelectorAll(".nav-tab").forEach(n => n.classList.toggle("active", n.dataset.tab === tab));
+  document.querySelectorAll(".tab-page").forEach(p => p.classList.toggle("active", p.id === "tab-" + tab));
+  if (tab === "uebersicht") renderUebersicht();
+  if (tab === "setup") renderSetup();
+  // Scroll oben
+  document.querySelector(".app-main").scrollTop = 0;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER: TAGEBUCH (Tab 1)
+// ═══════════════════════════════════════════════════════════════
+
+function renderCatGrid() {
+  const grid = document.getElementById("catGrid");
+  grid.innerHTML = QUICK_KATEGORIEN.map(k => `
+    <button class="cat-tile" data-kat="${escapeHtml(k.name)}">
+      <span class="cat-emoji">${k.emoji}</span>
+      <span class="cat-label">${escapeHtml(k.name)}</span>
+    </button>
+  `).join("");
+
+  grid.querySelectorAll(".cat-tile").forEach(tile => {
+    tile.addEventListener("click", () => {
+      const katName = tile.dataset.kat;
+      if (katName === "Mehr") { openMoreSheet(); return; }
+      handleQuickAdd(katName, tile);
+    });
+  });
+}
+
+function renderPaymentToggle() {
+  document.querySelectorAll("#paymentToggle .payment-chip").forEach(chip => {
+    chip.classList.toggle("active", chip.dataset.pay === currentZahlungsart);
+    chip.onclick = () => {
+      currentZahlungsart = chip.dataset.pay;
+      renderPaymentToggle();
+    };
+  });
+}
+
+function handleQuickAdd(katName, tileEl) {
+  const inp = document.getElementById("amountInput");
+  const betrag = parseGermanNumber(inp.value);
+
+  if (!betrag || betrag <= 0) {
+    inp.focus();
+    inp.style.animation = "pulse 0.4s ease 2";
+    setTimeout(() => inp.style.animation = "", 800);
+    toast("Erst Betrag eintippen", "error");
+    return;
+  }
+
+  const eintrag = {
+    id: Date.now(),
+    betrag: betrag,
+    kategorie: katName,
+    unterkategorie: "",
+    zeitstempel: new Date(),
+    zahlungsart: currentZahlungsart,
+    notiz: "",
+    gesamtbetrag: null,
+    mit_wem: "",
+    bedarf: "",
+  };
+
+  state.einträge.push(eintrag);
+  saveState();
+
+  // Visual feedback
+  if (tileEl) {
+    tileEl.classList.add("tile-saved");
+    setTimeout(() => tileEl.classList.remove("tile-saved"), 400);
+  }
+
+  inp.value = "";
+  inp.focus();
+  renderEntryList();
+  renderHeader();
+}
+
+function handleMoreCategoryAdd(katName) {
+  const inp = document.getElementById("amountInput");
+  const betrag = parseGermanNumber(inp.value);
+
+  if (!betrag || betrag <= 0) {
+    closeMoreSheet();
+    inp.focus();
+    toast("Erst Betrag eintippen", "error");
+    return;
+  }
+
+  const eintrag = {
+    id: Date.now(),
+    betrag: betrag,
+    kategorie: katName,
+    unterkategorie: "",
+    zeitstempel: new Date(),
+    zahlungsart: currentZahlungsart,
+    notiz: "",
+    gesamtbetrag: null,
+    mit_wem: "",
+    bedarf: "",
+  };
+
+  state.einträge.push(eintrag);
+  saveState();
+  closeMoreSheet();
+  inp.value = "";
+  renderEntryList();
+  renderHeader();
+  toast("Eintrag gespeichert");
+}
+
+function renderEntryList() {
+  const section = document.getElementById("entryListSection");
+
+  if (state.einträge.length === 0) {
+    section.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>Noch keine Einträge</h3>
+        <p>Tippe einen Betrag und wähle eine Kategorie um zu starten.</p>
+      </div>`;
+    return;
+  }
+
+  // Sortiere absteigend nach Zeitstempel
+  const sorted = [...state.einträge].sort((a,b) => b.zeitstempel - a.zeitstempel);
+
+  // Gruppieren nach Tag
+  const groups = {};
+  sorted.forEach(e => {
+    const k = dayKey(e.zeitstempel);
+    if (!groups[k]) groups[k] = [];
+    groups[k].push(e);
+  });
+
+  // Render: nur die letzten 7 Tage anzeigen
+  const dayKeys = Object.keys(groups).sort().reverse().slice(0, 7);
+
+  section.innerHTML = dayKeys.map(k => {
+    const entries = groups[k];
+    const tagSumme = entries.reduce((s,e) => s + e.betrag, 0);
+    const refDate = entries[0].zeitstempel;
+
+    const items = entries.map(e => {
+      const meta = [];
+      meta.push(`<span class="entry-meta-item">${formatTimeShort(e.zeitstempel)}</span>`);
+      if (e.zahlungsart !== "Karte") meta.push(`<span class="entry-meta-item">${ZAHLUNG_LABEL[e.zahlungsart] || e.zahlungsart}</span>`);
+      if (e.unterkategorie) meta.push(`<span class="entry-meta-item">· ${escapeHtml(e.unterkategorie)}</span>`);
+      if (e.notiz) meta.push(`<span class="entry-meta-item">· 💬</span>`);
+      if (e.bedarf) meta.push(`<span class="entry-meta-item">· ${BEDARF_EMOJI[e.bedarf]}</span>`);
+      if (e.gesamtbetrag) meta.push(`<span class="entry-meta-item">· geteilt</span>`);
+
+      return `<div class="entry-item" onclick="openEditSheet(${e.id})">
+        <div class="entry-emoji">${getKatEmoji(e.kategorie)}</div>
+        <div class="entry-main">
+          <div class="entry-cat">${escapeHtml(e.kategorie)}</div>
+          <div class="entry-meta">${meta.join("")}</div>
+        </div>
+        <div class="entry-amount">${formatEuro(e.betrag)}</div>
+      </div>`;
+    }).join("");
+
+    return `<div class="day-group">
+      <div class="day-header">
+        <span>${dayLabel(refDate)} · ${entries.length}</span>
+        <span class="day-sum">${formatEuro(tagSumme)}</span>
+      </div>
+      <div class="entry-list">${items}</div>
+    </div>`;
+  }).join("");
+
+  // Hinweis wenn mehr Tage existieren
+  if (Object.keys(groups).length > 7) {
+    section.innerHTML += `<div style="text-align:center;color:var(--text-light);font-size:11px;padding:14px 0 4px;">
+      Ältere Einträge in der Übersicht ›
+    </div>`;
+  }
+}
+
+function renderHeader() {
+  const today = state.einträge.filter(e => isToday(e.zeitstempel));
+  const sum = today.reduce((s,e) => s + e.betrag, 0);
+  document.getElementById("headerSubtitle").textContent =
+    `Heute · ${formatEuro(sum)} · ${today.length} Eintr${today.length === 1 ? "ag" : "äge"}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MORE-CATEGORIES SHEET
+// ═══════════════════════════════════════════════════════════════
+
+function openMoreSheet() {
+  const inp = document.getElementById("amountInput");
+  const betrag = parseGermanNumber(inp.value);
+  if (!betrag || betrag <= 0) {
+    inp.focus();
+    toast("Erst Betrag eintippen", "error");
+    return;
+  }
+
+  const body = document.getElementById("moreSheetBody");
+  body.innerHTML = `
+    <div class="cat-list-group">
+      <div class="cat-list-title">Schnellauswahl</div>
+      ${QUICK_KATEGORIEN.filter(k => k.name !== "Mehr").map(k => `
+        <div class="cat-list-row" onclick="handleMoreCategoryAdd('${escapeHtml(k.name)}')">
+          <span class="cat-list-emoji">${k.emoji}</span>
+          <span class="cat-list-name">${escapeHtml(k.name)}</span>
+          <span class="cat-list-arrow">›</span>
+        </div>
+      `).join("")}
+    </div>
+    <div class="cat-list-group">
+      <div class="cat-list-title">Weitere Kategorien</div>
+      ${Object.entries(ERWEITERTE_KATEGORIEN).map(([name,k]) => `
+        <div class="cat-list-row" onclick="handleMoreCategoryAdd('${escapeHtml(name)}')">
+          <span class="cat-list-emoji">${k.emoji}</span>
+          <span class="cat-list-name">${escapeHtml(name)}</span>
+          <span class="cat-list-arrow">›</span>
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  document.getElementById("moreSheetOverlay").classList.add("open");
+  document.getElementById("moreSheet").classList.add("open");
+}
+
+function closeMoreSheet() {
+  document.getElementById("moreSheetOverlay").classList.remove("open");
+  document.getElementById("moreSheet").classList.remove("open");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DETAIL EDIT SHEET
+// ═══════════════════════════════════════════════════════════════
+
+function openEditSheet(id) {
+  const e = state.einträge.find(x => x.id === id);
+  if (!e) return;
+  currentEditId = id;
+
+  // Alle bekannten Kategorien für Dropdown
+  const allKats = [
+    ...QUICK_KATEGORIEN.filter(k => k.name !== "Mehr").map(k => k.name),
+    ...Object.keys(ERWEITERTE_KATEGORIEN),
+  ];
+
+  // Subs für aktuelle Kategorie
+  let currentSubs = [];
+  const quickKat = QUICK_KATEGORIEN.find(k => k.name === e.kategorie);
+  if (quickKat) currentSubs = quickKat.subs;
+  else if (ERWEITERTE_KATEGORIEN[e.kategorie]) currentSubs = ERWEITERTE_KATEGORIEN[e.kategorie].subs;
+
+  const dateStr = formatDateInput(e.zeitstempel);
+  const timeStr = formatTimeShort(e.zeitstempel);
+
+  const body = document.getElementById("editSheetBody");
+  body.innerHTML = `
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Betrag (€)</label>
+        <input class="field-input field-input-mono" type="text" inputmode="decimal" id="editBetrag"
+               value="${String(e.betrag).replace(".",",")}">
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field-group">
+        <label class="field-label">Datum</label>
+        <input class="field-input" type="date" id="editDatum" value="${dateStr}">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Uhrzeit</label>
+        <input class="field-input" type="time" id="editZeit" value="${timeStr}">
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Kategorie</label>
+      <select class="field-select" id="editKategorie" onchange="onEditKatChange()">
+        ${allKats.map(k => `<option value="${escapeHtml(k)}"${k===e.kategorie?" selected":""}>${getKatEmoji(k)} ${escapeHtml(k)}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Unterkategorie</label>
+      <select class="field-select" id="editUnterkat">
+        <option value="">– keine –</option>
+        ${currentSubs.map(s => `<option${s===e.unterkategorie?" selected":""}>${escapeHtml(s)}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Zahlungsart</label>
+      <div class="chip-row" id="editZahlChips">
+        ${ZAHLUNGSARTEN.map(z => `<button class="chip${z===e.zahlungsart?" active":""}" data-z="${escapeHtml(z)}">${ZAHLUNG_LABEL[z]}</button>`).join("")}
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Bedarf</label>
+      <div class="chip-row" id="editBedarfChips">
+        <button class="chip${!e.bedarf?" active":""}" data-b="">— keine —</button>
+        ${BEDARF_OPTIONS.map(b => `<button class="chip${b===e.bedarf?" active":""}" data-b="${escapeHtml(b)}">${BEDARF_EMOJI[b]} ${escapeHtml(b)}</button>`).join("")}
+      </div>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Notiz</label>
+      <textarea class="field-textarea" id="editNotiz" placeholder="z.B. mit Robin, auf Arbeit, ...">${escapeHtml(e.notiz || "")}</textarea>
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">Geteilte Rechnung (optional)</label>
+      <div class="split-section">
+        <div class="field-row">
+          <div class="field-group">
+            <label class="field-label" style="font-size:10px;">Gesamtbetrag (€)</label>
+            <input class="field-input field-input-mono" type="text" inputmode="decimal" id="editGesamt"
+                   placeholder="leer = nicht geteilt"
+                   value="${e.gesamtbetrag ? String(e.gesamtbetrag).replace(".",",") : ""}">
+          </div>
+        </div>
+        <div class="field-group" style="margin-top:8px;margin-bottom:0;">
+          <label class="field-label" style="font-size:10px;">Mit wem</label>
+          <input class="field-input" type="text" id="editMitWem"
+                 placeholder="z.B. Robin, Alex+Mama"
+                 value="${escapeHtml(e.mit_wem || "")}">
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="btn btn-danger" onclick="deleteEntry()">Löschen</button>
+      <button class="btn btn-primary" onclick="saveEntry()">Speichern</button>
+    </div>
+  `;
+
+  // Chip-Toggle-Logik
+  body.querySelectorAll("#editZahlChips .chip").forEach(c => {
+    c.onclick = () => {
+      body.querySelectorAll("#editZahlChips .chip").forEach(x => x.classList.remove("active"));
+      c.classList.add("active");
+    };
+  });
+  body.querySelectorAll("#editBedarfChips .chip").forEach(c => {
+    c.onclick = () => {
+      body.querySelectorAll("#editBedarfChips .chip").forEach(x => x.classList.remove("active"));
+      c.classList.add("active");
+    };
+  });
+
+  document.getElementById("editSheetOverlay").classList.add("open");
+  document.getElementById("editSheet").classList.add("open");
+}
+
+function onEditKatChange() {
+  const kat = document.getElementById("editKategorie").value;
+  let subs = [];
+  const quickKat = QUICK_KATEGORIEN.find(k => k.name === kat);
+  if (quickKat) subs = quickKat.subs;
+  else if (ERWEITERTE_KATEGORIEN[kat]) subs = ERWEITERTE_KATEGORIEN[kat].subs;
+
+  const sel = document.getElementById("editUnterkat");
+  sel.innerHTML = `<option value="">– keine –</option>` + subs.map(s => `<option>${escapeHtml(s)}</option>`).join("");
+}
+
+function closeEditSheet() {
+  document.getElementById("editSheetOverlay").classList.remove("open");
+  document.getElementById("editSheet").classList.remove("open");
+  currentEditId = null;
+}
+
+function saveEntry() {
+  const e = state.einträge.find(x => x.id === currentEditId);
+  if (!e) return;
+
+  const body = document.getElementById("editSheetBody");
+  const betrag = parseGermanNumber(body.querySelector("#editBetrag").value);
+  if (!betrag || betrag <= 0) { toast("Ungültiger Betrag", "error"); return; }
+
+  const datumStr = body.querySelector("#editDatum").value;
+  const zeitStr = body.querySelector("#editZeit").value;
+  let zeitstempel = e.zeitstempel;
+  if (datumStr && zeitStr) {
+    const [y,m,d] = datumStr.split("-").map(Number);
+    const [h,min] = zeitStr.split(":").map(Number);
+    zeitstempel = new Date(y, m-1, d, h, min);
+  }
+
+  const gesamtStr = body.querySelector("#editGesamt").value.trim();
+  const gesamt = gesamtStr ? parseGermanNumber(gesamtStr) : null;
+
+  const zChip = body.querySelector("#editZahlChips .chip.active");
+  const bChip = body.querySelector("#editBedarfChips .chip.active");
+
+  e.betrag = betrag;
+  e.zeitstempel = zeitstempel;
+  e.kategorie = body.querySelector("#editKategorie").value;
+  e.unterkategorie = body.querySelector("#editUnterkat").value;
+  e.zahlungsart = zChip ? zChip.dataset.z : "Karte";
+  e.bedarf = bChip ? bChip.dataset.b : "";
+  e.notiz = body.querySelector("#editNotiz").value.trim();
+  e.gesamtbetrag = gesamt && gesamt > 0 ? gesamt : null;
+  e.mit_wem = body.querySelector("#editMitWem").value.trim();
+
+  saveState();
+  closeEditSheet();
+  renderEntryList();
+  renderHeader();
+  toast("Eintrag aktualisiert");
+}
+
+function deleteEntry() {
+  if (!confirm("Eintrag wirklich löschen?")) return;
+  state.einträge = state.einträge.filter(e => e.id !== currentEditId);
+  saveState();
+  closeEditSheet();
+  renderEntryList();
+  renderHeader();
+  toast("Eintrag gelöscht");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ÜBERSICHT (Tab 2)
+// ═══════════════════════════════════════════════════════════════
+
+function getRangeData() {
+  const now = new Date();
+  let start;
+
+  if (currentRange === "heute") {
+    start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  } else if (currentRange === "woche") {
+    // Aktuelle Woche ab Montag
+    const day = now.getDay() || 7; // So=0 → 7
+    start = new Date(now);
+    start.setDate(now.getDate() - (day - 1));
+    start.setHours(0,0,0,0);
+  } else if (currentRange === "monat") {
+    start = new Date(now.getFullYear(), now.getMonth(), 1);
+  } else if (currentRange === "30tage") {
+    start = new Date(now); start.setDate(now.getDate() - 30); start.setHours(0,0,0,0);
+  } else {
+    start = null;
+  }
+
+  if (start) return state.einträge.filter(e => e.zeitstempel >= start);
+  return [...state.einträge];
+}
+
+function renderUebersicht() {
+  // Range chips
+  document.querySelectorAll(".range-chip").forEach(c => {
+    c.classList.toggle("active", c.dataset.range === currentRange);
+    c.onclick = () => { currentRange = c.dataset.range; renderUebersicht(); };
+  });
+
+  const data = getRangeData();
+  const container = document.getElementById("uebersichtContent");
+
+  if (data.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding:60px 20px;">
+        <div class="empty-icon">📊</div>
+        <h3>Keine Daten im Zeitraum</h3>
+        <p>Wechsle den Zeitraum oder erfasse erste Einträge.</p>
+      </div>`;
+    Object.values(chartInstances).forEach(c => c && c.destroy());
+    chartInstances = {};
+    return;
+  }
+
+  const summe = data.reduce((s,e) => s + e.betrag, 0);
+  const days = new Set(data.map(e => dayKey(e.zeitstempel))).size || 1;
+  const avg = summe / days;
+
+  container.innerHTML = `
+    <div class="stat-grid-3">
+      <div class="stat-mini">
+        <div class="stat-mini-label">Summe</div>
+        <div class="stat-mini-value red">${formatEuro(summe)}</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Einträge</div>
+        <div class="stat-mini-value">${data.length}</div>
+      </div>
+      <div class="stat-mini">
+        <div class="stat-mini-label">Ø/Tag</div>
+        <div class="stat-mini-value">${formatEuro(avg)}</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">Top-Kategorien</div>
+      <div class="chart-wrap"><canvas id="chartKat"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">Zahlungsarten</div>
+      <div class="chart-wrap"><canvas id="chartPay"></canvas></div>
+    </div>
+
+    <div class="chart-card" id="chartBedarfCard" style="display:none;">
+      <div class="chart-card-title">Geplant vs. Spontan vs. Routine</div>
+      <div class="chart-wrap"><canvas id="chartBedarf"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">Wochenmuster (Wochentag × Tageszeit)</div>
+      <div id="heatmapBody"></div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-card-title">Tagesverlauf</div>
+      <div class="chart-wrap"><canvas id="chartTimeline"></canvas></div>
+    </div>
+  `;
+
+  // Destroy old charts
+  Object.values(chartInstances).forEach(c => c && c.destroy());
+  chartInstances = {};
+
+  renderChartKat(data);
+  renderChartPay(data);
+  renderChartBedarf(data);
+  renderHeatmap(data);
+  renderChartTimeline(data);
+}
+
+function renderChartKat(data) {
+  const map = {};
+  data.forEach(e => { map[e.kategorie] = (map[e.kategorie] || 0) + e.betrag; });
+  const entries = Object.entries(map).sort((a,b) => b[1] - a[1]).slice(0, 10);
+
+  chartInstances.kat = new Chart(document.getElementById("chartKat"), {
+    type: "bar",
+    data: {
+      labels: entries.map(e => getKatEmoji(e[0]) + " " + e[0]),
+      datasets: [{
+        data: entries.map(e => e[1]),
+        backgroundColor: entries.map((_,i) => PIE_COLORS[i % PIE_COLORS.length]),
+        borderRadius: 6,
+      }],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => formatEuro(ctx.parsed.x) } },
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 }, callback: v => v + "€" } },
+        y: { ticks: { font: { size: 11, family: "DM Sans" } } },
+      },
+    },
+  });
+}
+
+function renderChartPay(data) {
+  const map = {};
+  data.forEach(e => { map[e.zahlungsart] = (map[e.zahlungsart] || 0) + e.betrag; });
+  const entries = Object.entries(map);
+
+  chartInstances.pay = new Chart(document.getElementById("chartPay"), {
+    type: "doughnut",
+    data: {
+      labels: entries.map(e => ZAHLUNG_LABEL[e[0]] || e[0]),
+      datasets: [{
+        data: entries.map(e => e[1]),
+        backgroundColor: entries.map((_,i) => PIE_COLORS[i % PIE_COLORS.length]),
+        borderWidth: 2, borderColor: "#fff",
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { font: { size: 11, family: "DM Sans" }, boxWidth: 12, padding: 8 } },
+        tooltip: { callbacks: { label: ctx => ctx.label + ": " + formatEuro(ctx.parsed) } },
+      },
+    },
+  });
+}
+
+function renderChartBedarf(data) {
+  const withBedarf = data.filter(e => e.bedarf);
+  if (withBedarf.length === 0) return;
+
+  document.getElementById("chartBedarfCard").style.display = "block";
+  const map = {};
+  withBedarf.forEach(e => { map[e.bedarf] = (map[e.bedarf] || 0) + e.betrag; });
+  const entries = Object.entries(map);
+
+  chartInstances.bedarf = new Chart(document.getElementById("chartBedarf"), {
+    type: "doughnut",
+    data: {
+      labels: entries.map(e => BEDARF_EMOJI[e[0]] + " " + e[0]),
+      datasets: [{
+        data: entries.map(e => e[1]),
+        backgroundColor: entries.map(e => e[0] === "Bedarf" ? "#10b981" : e[0] === "Impuls" ? "#ef4444" : "#8b5cf6"),
+        borderWidth: 2, borderColor: "#fff",
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { font: { size: 11, family: "DM Sans" }, boxWidth: 12, padding: 8 } },
+        tooltip: { callbacks: { label: ctx => ctx.label + ": " + formatEuro(ctx.parsed) } },
+      },
+    },
+  });
+}
+
+function renderHeatmap(data) {
+  // 4 Tageszeiten × 7 Wochentage
+  // Tageszeit: Morgen 5–11, Mittag 11–14, Nachmittag 14–18, Abend 18–24, Nacht 0–5
+  const segments = ["Morgen","Mittag","Nachm.","Abend","Nacht"];
+  const segHours = h => h >= 5 && h < 11 ? 0 : h >= 11 && h < 14 ? 1 : h >= 14 && h < 18 ? 2 : h >= 18 ? 3 : 4;
+
+  // Init grid: rows = segments, cols = wochentage (Mo-So)
+  const grid = segments.map(() => new Array(7).fill(0));
+  data.forEach(e => {
+    const d = e.zeitstempel;
+    const day = (d.getDay() || 7) - 1; // Mo=0, So=6
+    const seg = segHours(d.getHours());
+    grid[seg][day] += e.betrag;
+  });
+
+  const max = Math.max(...grid.flat()) || 1;
+
+  let html = `<div class="heatmap-wrap" style="grid-template-columns:60px repeat(7,1fr);">
+    <div></div>
+    ${WOCHENTAGE.map(d => `<div class="heatmap-day-label">${d}</div>`).join("")}`;
+
+  segments.forEach((seg, i) => {
+    html += `<div class="heatmap-label" style="font-size:10px;justify-content:flex-end;padding-right:4px;">${seg}</div>`;
+    grid[i].forEach((v, j) => {
+      const intensity = max > 0 ? v / max : 0;
+      const bg = v === 0 ? "#f3f4f6" : `rgba(37,99,235,${0.15 + intensity * 0.7})`;
+      const color = intensity > 0.5 ? "#fff" : "var(--text-muted)";
+      html += `<div class="heatmap-cell" style="background:${bg};color:${color};" title="${WOCHENTAGE[j]} ${seg}: ${formatEuro(v)}">${v > 0 ? Math.round(v) : ""}</div>`;
+    });
+  });
+
+  html += `</div>`;
+  html += `<div style="font-size:10px;color:var(--text-light);margin-top:6px;text-align:center;">Werte in € · Max: ${formatEuro(max)}</div>`;
+  document.getElementById("heatmapBody").innerHTML = html;
+}
+
+function renderChartTimeline(data) {
+  // Tagessummen über den gewählten Zeitraum
+  const map = {};
+  data.forEach(e => { const k = dayKey(e.zeitstempel); map[k] = (map[k] || 0) + e.betrag; });
+  const keys = Object.keys(map).sort();
+
+  if (keys.length < 2) {
+    document.getElementById("chartTimeline").parentElement.innerHTML =
+      `<div style="text-align:center;color:var(--text-light);font-size:12px;padding:40px 0;">Mehr Tage nötig für Tagesverlauf</div>`;
+    return;
+  }
+
+  const labels = keys.map(k => {
+    const [y,m,d] = k.split("-");
+    return d + "." + m + ".";
+  });
+
+  chartInstances.timeline = new Chart(document.getElementById("chartTimeline"), {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Tagessumme",
+        data: keys.map(k => map[k]),
+        borderColor: "#2563eb",
+        backgroundColor: "rgba(37,99,235,0.12)",
+        fill: true, tension: 0.3, pointRadius: 3, borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => formatEuro(ctx.parsed.y) } },
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 } } },
+        y: { ticks: { font: { size: 10 }, callback: v => v + "€" } },
+      },
+    },
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SETUP (Tab 3)
+// ═══════════════════════════════════════════════════════════════
+
+function renderSetup() {
+  const dataSection = document.getElementById("setupDataSection");
+  const lastMod = state.einträge.length > 0
+    ? new Date(Math.max(...state.einträge.map(e => e.zeitstempel.getTime())))
+    : null;
+  const totalBytes = new Blob([JSON.stringify(state)]).size;
+
+  dataSection.innerHTML = `
+    <div class="setup-row">
+      <span class="setup-row-label">Einträge insgesamt</span>
+      <span class="setup-row-value">${state.einträge.length}</span>
+    </div>
+    <div class="setup-row">
+      <span class="setup-row-label">Speicherplatz</span>
+      <span class="setup-row-value">${(totalBytes / 1024).toFixed(1)} KB</span>
+    </div>
+    <div class="setup-row">
+      <span class="setup-row-label">Letzte Erfassung</span>
+      <span class="setup-row-value">${lastMod ? formatDateShort(lastMod) + " " + formatTimeShort(lastMod) : "—"}</span>
+    </div>
+    <div class="setup-row setup-row-clickable" onclick="exportCSV()">
+      <span class="setup-row-label">📤 Als CSV exportieren</span>
+      <span class="setup-row-arrow">›</span>
+    </div>
+  `;
+
+  const settingsSection = document.getElementById("setupSettingsSection");
+  settingsSection.innerHTML = `
+    <div class="setup-row">
+      <span class="setup-row-label">Standard-Zahlungsart</span>
+      <select class="field-select" style="width:auto;padding:6px 10px;font-size:12px;" onchange="changeStandardZahlung(this.value)">
+        ${ZAHLUNGSARTEN.map(z => `<option value="${escapeHtml(z)}"${z===state.settings.standard_zahlungsart?" selected":""}>${ZAHLUNG_LABEL[z]}</option>`).join("")}
+      </select>
+    </div>
+  `;
+}
+
+function changeStandardZahlung(z) {
+  state.settings.standard_zahlungsart = z;
+  currentZahlungsart = z;
+  saveState();
+  renderPaymentToggle();
+  toast("Standard-Zahlungsart gespeichert");
+}
+
+function exportCSV() {
+  if (state.einträge.length === 0) { toast("Keine Daten zum Exportieren", "error"); return; }
+
+  const headers = ["Datum","Zeit","Betrag","Kategorie","Unterkategorie","Zahlungsart","Notiz","Gesamtbetrag","Mit_wem","Bedarf"];
+  const rows = state.einträge
+    .sort((a,b) => a.zeitstempel - b.zeitstempel)
+    .map(e => [
+      formatDateShort(e.zeitstempel),
+      formatTimeShort(e.zeitstempel),
+      String(e.betrag).replace(".",","),
+      e.kategorie,
+      e.unterkategorie || "",
+      e.zahlungsart,
+      e.notiz || "",
+      e.gesamtbetrag ? String(e.gesamtbetrag).replace(".",",") : "",
+      e.mit_wem || "",
+      e.bedarf || "",
+    ]);
+
+  const esc = c => '"' + String(c).replace(/"/g,'""') + '"';
+  const csv = [headers.join(";"), ...rows.map(r => r.map(esc).join(";"))].join("\r\n");
+
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Tagebuch_Export_" + new Date().toISOString().slice(0,10) + ".csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("CSV exportiert");
+}
+
+function confirmDeleteAll() {
+  if (state.einträge.length === 0) { toast("Bereits leer", "info"); return; }
+  if (!confirm(`Wirklich ALLE ${state.einträge.length} Einträge löschen? Diese Aktion ist unwiderruflich.`)) return;
+  if (!confirm("Bist du absolut sicher? Letzte Warnung.")) return;
+  state.einträge = [];
+  saveState();
+  renderSetup();
+  renderEntryList();
+  renderHeader();
+  toast("Alle Einträge gelöscht");
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AMOUNT INPUT FORMATTING (German numeric)
+// ═══════════════════════════════════════════════════════════════
+
+function setupAmountInput() {
+  const inp = document.getElementById("amountInput");
+
+  // Erlaubt nur Ziffern und ein Komma
+  inp.addEventListener("input", () => {
+    let v = inp.value.replace(/[^\d,]/g, "");
+    // Maximal ein Komma
+    const parts = v.split(",");
+    if (parts.length > 2) v = parts[0] + "," + parts.slice(1).join("");
+    // Maximal 2 Nachkommastellen
+    if (parts[1] && parts[1].length > 2) v = parts[0] + "," + parts[1].slice(0, 2);
+    inp.value = v;
+  });
+
+  // Enter = ersten Quick-Button auslösen? Nein, lieber nichts (da Kategorie noch fehlt)
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+function init() {
+  loadState();
+  renderCatGrid();
+  renderPaymentToggle();
+  renderEntryList();
+  renderHeader();
+  setupAmountInput();
+}
+
+init();
+</script>
+</body>
+</html>
