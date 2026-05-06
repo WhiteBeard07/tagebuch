@@ -5,6 +5,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#1a1a2e">
 <title>Ausgaben-Tagebuch</title>
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Standard-Icon (Fallback für Browser-Tab) -->
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+
+<!-- iOS-spezifisch (Apple ignoriert manifest.json teilweise) -->
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ausgaben">
+
+<!-- Android Chrome -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Ausgaben">
+
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -359,7 +377,7 @@ body {
     <div class="app-title">📓 Tagebuch</div>
     <div class="app-subtitle" id="headerSubtitle">Heute · 0,00€ · 0 Einträge</div>
   </div>
-  <div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--mono);">v1.0</div>
+  <div style="font-size:11px;color:rgba(255,255,255,0.4);font-family:var(--mono);">v1.1</div>
 </header>
 
 <main class="app-main">
@@ -469,7 +487,7 @@ body {
 // ═══════════════════════════════════════════════════════════════
 
 const STORAGE_KEY = "tagebuch_data";
-const APP_VERSION = "1.0";
+const APP_VERSION = "1.1";
 
 // Quick-Add Kategorien (6 Tiles im Hauptscreen)
 const QUICK_KATEGORIEN = [
